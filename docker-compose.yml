@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - db_data:/app/database
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=file:/app/database/order_management.db
+
+volumes:
+  db_data:

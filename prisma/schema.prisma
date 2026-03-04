@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  type      String   // 'maker' | 'customer' | 'both'
+  phone     String?
+  email     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts             Contact[]
+  projectsAsMaker      Project[]         @relation("MakerProjects")
+  projectsAsCustomer   Project[]         @relation("CustomerProjects")
+  quotationRequests    QuotationRequest[]
+  ordersToMaker        OrderToMaker[]
+  customerDeals        CustomerDeal[]
+
+  @@map("companies")
+}
+
+model Contact {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  name      String
+  email     String?
+  phone     String?
+  role      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@map("contacts")
+}
+
+model Project {
+  id                 Int      @id @default(autoincrement())
+  projectNo          String   @unique
+  name               String
+  makerId            Int?
+  customerId         Int?
+  makerStatus        String   @default("pending")
+  customerStatus     String   @default("pending")
+  hasIntegrityIssue  Boolean  @default(false)
+  integrityIssueDesc String?
+  description        String?
+  startDate          DateTime?
+  expectedEndDate    DateTime?
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  maker             Company?          @relation("MakerProjects", fields: [makerId], references: [id])
+  customer          Company?          @relation("CustomerProjects", fields: [customerId], references: [id])
+  quotationRequests QuotationRequest[]
+  ordersToMaker     OrderToMaker[]
+  customerDeals     CustomerDeal[]
+  activityLogs      ActivityLog[]
+
+  @@map("projects")
+}
+
+model QuotationRequest {
+  id               Int      @id @default(autoincrement())
+  projectId        Int
+  companyId        Int?
+  requestNo        String?
+  requestDate      DateTime @default(now())
+  responseDeadline DateTime?
+  alertStatus      String   @default("none")
+  subject          String?
+  details          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project           Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company           Company?          @relation(fields: [companyId], references: [id])
+  quotationResponse QuotationResponse?
+  activityLogs      ActivityLog[]
+
+  @@map("quotation_requests")
+}
+
+model QuotationResponse {
+  id                 Int      @id @default(autoincrement())
+  quotationRequestId Int      @unique
+  responseDate       DateTime @default(now())
+  amount             Float?
+  currency           String   @default("JPY")
+  validUntil         DateTime?
+  details            String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  quotationRequest QuotationRequest @relation(fields: [quotationRequestId], references: [id], onDelete: Cascade)
+
+  @@map("quotation_responses")
+}
+
+model OrderToMaker {
+  id           Int      @id @default(autoincrement())
+  projectId    Int
+  companyId    Int?
+  orderNo      String?
+  orderDate    DateTime @default(now())
+  amount       Float?
+  currency     String   @default("JPY")
+  deliveryDate DateTime?
+  status       String   @default("ordered")
+  details      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company      Company?     @relation(fields: [companyId], references: [id])
+  activityLogs ActivityLog[]
+
+  @@map("orders_to_maker")
+}
+
+model CustomerDeal {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  companyId Int?
+  dealType  String
+  dealNo    String?
+  dealDate  DateTime @default(now())
+  amount    Float?
+  currency  String   @default("JPY")
+  dueDate   DateTime?
+  status    String   @default("pending")
+  details   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company      Company?     @relation(fields: [companyId], references: [id])
+  activityLogs ActivityLog[]
+
+  @@map("customer_deals")
+}
+
+model ActivityLog {
+  id                 Int      @id @default(autoincrement())
+  projectId          Int?
+  quotationRequestId Int?
+  orderToMakerId     Int?
+  customerDealId     Int?
+  entityType         String
+  entityId           Int
+  action             String
+  fieldName          String?
+  oldValue           String?
+  newValue           String?
+  description        String?
+  createdAt          DateTime @default(now())
+
+  project          Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  quotationRequest QuotationRequest? @relation(fields: [quotationRequestId], references: [id], onDelete: SetNull)
+  orderToMaker     OrderToMaker?     @relation(fields: [orderToMakerId], references: [id], onDelete: SetNull)
+  customerDeal     CustomerDeal?     @relation(fields: [customerDealId], references: [id], onDelete: SetNull)
+
+  @@map("activity_logs")
+}
+
+model AlertSetting {
+  id           Int      @id @default(autoincrement())
+  settingKey   String   @unique
+  settingValue String
+  description  String?
+  updatedAt    DateTime @updatedAt
+
+  @@map("alert_settings")
+}
